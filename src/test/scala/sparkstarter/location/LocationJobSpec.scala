@@ -35,9 +35,6 @@ class LocationJobSpec extends FunSpec with Matchers with DatasetSuiteBase {
       ).toDS
 
       val rawLocationsDS = LocationJob.loadRawLocations(locationJsonPath.toString)
-      expectedRawLocationsDS.show()
-      rawLocationsDS.show()
-
       assertDatasetEquals(expectedRawLocationsDS, rawLocationsDS)
     }
 
