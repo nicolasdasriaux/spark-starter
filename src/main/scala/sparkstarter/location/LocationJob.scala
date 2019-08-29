@@ -25,22 +25,7 @@ object LocationJob {
      * - Use [[org.apache.spark.sql.types.StructField]]
      * - Use [[org.apache.spark.sql.types.StringType]]
      */
-    val locationSchema: StructType = StructType(Seq(
-      StructField("id", StringType),
-      StructField("name", StringType),
-      StructField("address", StringType),
-
-      StructField("coordinates",
-        StructType(Seq(
-          StructField("latitude", StringType),
-          StructField("longitude", StringType)
-        ))
-      ),
-
-      StructField("latitude", StringType),
-      StructField("longitude", StringType),
-      StructField("position", StringType)
-    ))
+    val locationSchema: StructType = ???
 
     /**
      * Read CSV
@@ -53,12 +38,7 @@ object LocationJob {
      * - Use [[org.apache.spark.sql.DataFrameReader.schema()]]
      * - Use [[org.apache.spark.sql.Dataset.as]] to convert `DataFrame` to proper `Dataset`
      */
-    val rawLocationsDS: Dataset[RawLocation] = spark.read
-      .option("multiline", true)
-      .option("mode", "FAILFAST")
-      .schema(locationSchema)
-      .json(locationJsonPath)
-      .as[RawLocation]
+    val rawLocationsDS: Dataset[RawLocation] = ???
 
     rawLocationsDS
   }
@@ -90,16 +70,7 @@ object LocationJob {
      * - Use [[org.apache.spark.sql.functions.coalesce()]] to take first non-null column
      * - Use [[org.apache.spark.sql.Dataset.as]] to convert `DataFrame` to proper `Dataset`
      */
-    val locationsDS: Dataset[Location] = rawLocationsDS
-      .withColumn("id", $"id".cast(LongType))
-      .withColumn("coordinates",
-        struct(
-          coalesce($"latitude", $"coordinates.latitude").cast(DoubleType).as("latitude"),
-          coalesce($"longitude", $"coordinates.longitude").cast(DoubleType).as("longitude")
-        )
-      )
-      .drop("latitude", "longitude")
-      .as[Location]
+    val locationsDS: Dataset[Location] = ???
 
     locationsDS
   }
