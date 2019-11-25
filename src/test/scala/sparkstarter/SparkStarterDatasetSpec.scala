@@ -1,72 +1,73 @@
 package sparkstarter
 
-import java.nio.file.Paths
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode, SparkSession}
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import sparkstarter.ecommerce.{Customer, ECommerce, Order}
 
-import com.holdenkarau.spark.testing.DatasetSuiteBase
-import org.apache.spark.sql.catalyst.ScalaReflection
-import org.apache.spark.sql.types.StructType
-import org.scalatest.{FunSpec, Matchers}
+class SparkStarterDatasetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+  implicit val spark: SparkSession = SparkSession.builder()
+    .appName("Dataset")
+    .master("local[*]")
+    .config("spark.default.parallelism", 8) // Default parallelism in Spark
+    .config("spark.sql.shuffle.partitions", 20) // Parallelism when shuffling in Spark SQL
+    .getOrCreate()
 
-class SparkStarterDatasetSpec extends FunSpec with Matchers with DatasetSuiteBase {
-  describe("Sample") {
-    it("should work") {
-      import spark.implicits._
+  implicit val sc: SparkContext = spark.sparkContext
 
-      val petsDS = Seq(
-        Pet(1, "Rex"),
-        Pet(2, "Mistigri"),
-        Pet(3, "Randolph")
-      ).toDS
-
-      val idsDF = petsDS.select($"id")
-      val expectedIdsDF = Seq(1, 2, 3).toDF("id")
-
-      assertDataFrameEquals(expectedIdsDF, idsDF)
-    }
+  override def afterAll() {
+    SparkStarter.keepSparkUIAlive()
+    spark.stop()
   }
 
-  describe("CSV") {
-    it("should be readable") {
-      val petsCsvPath = Paths.get(getClass.getResource("/pets.csv").toURI)
-      import spark.implicits._
+  private val hdfsPath = SparkStarter.hdfsPath()
 
-      val petSchema = ScalaReflection.schemaFor[Pet].dataType.asInstanceOf[StructType]
-
-      val petsDS = spark.read
-        .option("header", true)
-        .schema(petSchema)
-        .csv(petsCsvPath.toString)
-        .as[Pet]
-
-      val expectedPetsDS = Seq(
-        Pet(1, "Rex"),
-        Pet(2, "Mistigri"),
-        Pet(3, "Randolph")
-      ).toDS
-
-      assertDatasetEquals(expectedPetsDS, petsDS)
-    }
+  "Dataset" should "have a schema" in {
+    val customerDS: Dataset[Customer] = ECommerce.customersDS(10)
+    customerDS.printSchema()
   }
 
-  describe("JSON Lines file") {
-    it("should be readable") {
-      val petsCsvPath = Paths.get(getClass.getResource("/pets.jsonl").toURI)
-      import spark.implicits._
+  it should "trigger execution only when using an action" in {
+    val customerDS: Dataset[Customer] = ECommerce.customersDS(10)
+    customerDS.show()
+  }
 
-      val petSchema = ScalaReflection.schemaFor[Pet].dataType.asInstanceOf[StructType]
+  it should "allow aggregation using Spark SQL DSL to build queries" in {
+    import org.apache.spark.sql.functions._
+    import spark.implicits._
 
-      val petsDS = spark.read
-        .schema(petSchema)
-        .json(petsCsvPath.toString)
-        .as[Pet]
+    val orderDS: Dataset[Order] = ECommerce.ordersDS(10, customerId => customerId * 10)
 
-      val expectedPetsDS = Seq(
-        Pet(1, "Rex"),
-        Pet(2, "Mistigri"),
-        Pet(3, "Randolph")
-      ).toDS
+    val result: Dataset[Row] = orderDS
+      .groupBy($"customer_id")
+      .agg(count($"id").as("order_count"))
 
-      assertDatasetEquals(expectedPetsDS, petsDS)
-    }
+    result.printSchema()
+
+    result
+      .orderBy($"customer_id")
+      .show()
+  }
+
+  it should "write to multiple parts instead of a single part" in {
+    import spark.implicits._
+
+    val customerDS: Dataset[Customer] = ECommerce.customersDS(10000)
+    val orderDS: Dataset[Order] = ECommerce.ordersDS(10000, customerId => customerId)
+
+    val result: Dataset[Row] = customerDS.as("cst")
+      .join(orderDS.as("ord"), $"cst.id" === $"ord.customer_id", "left")
+      .select(
+        $"cst.id".as("customer_id"),
+        $"ord.id".as("order_id")
+      )
+
+    result.write
+      .mode(SaveMode.Overwrite)
+      .csv(hdfsPath.resolve("join.csv").toString)
+
+    result.write
+      .mode(SaveMode.Overwrite)
+      .parquet(hdfsPath.resolve("join.parquet").toString)
   }
 }
