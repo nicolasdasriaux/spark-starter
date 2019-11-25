@@ -13,6 +13,8 @@ object SparkStarterApp {
 
     implicit val sc: SparkContext = spark.sparkContext
 
+    SparkStarter.keepSparkUIAlive()
+
     spark.close()
   }
 }

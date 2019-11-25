@@ -1,24 +1,30 @@
 package sparkstarter
 
-import com.holdenkarau.spark.testing.{RDDComparisons, SharedSparkContext}
-import org.scalatest.{FunSpec, Matchers}
+import com.holdenkarau.spark.testing.RDDComparisons
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.SparkSession
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-class SparkStarterRddSpec extends FunSpec with Matchers with SharedSparkContext with RDDComparisons {
-  describe("Sample") {
-    it("should work") {
-      val numbersRDD = sc.parallelize(1 to 10)
-        .filter(i => i % 3 == 0)
-        .map(i => s"Number $i")
+class SparkStarterRddSpec extends FlatSpec with Matchers with BeforeAndAfterAll with RDDComparisons {
+  val sparkSession: SparkSession = SparkSession.builder()
+    .appName("RDD")
+    .master("local[*]")
+    .config("spark.default.parallelism", 8) // Default parallelism in Spark
+    .config("spark.sql.shuffle.partitions", 200) // Parallelism when shuffling in Spark SQL
+    .getOrCreate()
 
-      val expectedNumbersRDD = sc.parallelize(
-        Seq(
-          "Number 3",
-          "Number 6",
-          "Number 9"
-        )
-      )
+  val sc: SparkContext = sparkSession.sparkContext
 
-      assertRDDEquals(expectedNumbersRDD, numbersRDD)
-    }
+  override def afterAll() {
+    SparkStarter.keepSparkUIAlive()
+    sparkSession.stop()
+  }
+
+  "RDD" should "trigger execution only when using an action" in {
+    val numbersRDD = sc.parallelize(1 to 100000)
+      .filter(i => i % 3 == 0)
+      .map(i => s"Number $i")
+
+    numbersRDD.collect()
   }
 }
