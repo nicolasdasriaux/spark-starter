@@ -17,7 +17,6 @@ slidenumbers: true
   - **Processing capacity** is not enough to process data on a single machine
   - Should process in parallel on multiples machines
 
-
 ---
 
 # Concurrency vs. Parallelism
@@ -143,4 +142,3 @@ slidenumbers: true
   - Allocate memory and processing capacity for **executors** on machines in the cluster
   - Orchestrate execution of **tasks** on **executors**
   - Handle failures and retries
-
