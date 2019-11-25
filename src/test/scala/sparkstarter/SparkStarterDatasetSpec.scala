@@ -52,8 +52,8 @@ class SparkStarterDatasetSpec extends FlatSpec with Matchers with BeforeAndAfter
   it should "write to multiple parts instead of a single part" in {
     import spark.implicits._
 
-    val customerDS: Dataset[Customer] = ECommerce.customersDS(10000)
-    val orderDS: Dataset[Order] = ECommerce.ordersDS(10000, customerId => customerId)
+    val customerDS: Dataset[Customer] = ECommerce.customersDS(1000)
+    val orderDS: Dataset[Order] = ECommerce.ordersDS(1000, customerId => customerId)
 
     val result: Dataset[Row] = customerDS.as("cst")
       .join(orderDS.as("ord"), $"cst.id" === $"ord.customer_id", "left")
