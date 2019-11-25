@@ -3,7 +3,7 @@ package sparkstarter
 import com.holdenkarau.spark.testing.RDDComparisons
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import sparkstarter.ecommerce.{Customer, ECommerce, Order}
 
@@ -12,7 +12,7 @@ class SparkStarterRddSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
     .appName("RDD")
     .master("local[*]")
     .config("spark.default.parallelism", 8) // Default parallelism in Spark
-    .config("spark.sql.shuffle.partitions", 200) // Parallelism when shuffling in Spark SQL
+    .config("spark.sql.shuffle.partitions", 20) // Parallelism when shuffling in Spark SQL
     .getOrCreate()
 
   implicit val sc: SparkContext = spark.sparkContext
@@ -45,7 +45,8 @@ class SparkStarterRddSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
 
     val customerIdAndCustomerRDD: RDD[(Long, Customer)] = customerRDD.map(customer => (customer.id, customer))
     val customerIdAndOrderRDD: RDD[(Long, Order)] = orderRDD.map(order => (order.customer_id, order))
-    val joinRDD: RDD[(Long, (Customer, Option[Order]))] = customerIdAndCustomerRDD.leftOuterJoin(customerIdAndOrderRDD)
+    val joinRDD: RDD[(Long, (Customer, Option[Order]))] = customerIdAndCustomerRDD
+      .leftOuterJoin(customerIdAndOrderRDD)
 
     println(joinRDD.collect().toList)
   }
